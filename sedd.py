@@ -1,28 +1,27 @@
 #!/usr/bin/python3
-import io
+
 import json
 import os
 
 path_google_chrome = os.path.expanduser(r'~/.config/google-chrome/NativeMessagingHosts')
 browsers = ['chromium', 'yandex-browser', 'chromium-gost']
 upd_dict = {'newAllowFileAccess':True, 'incognito':True}
-
-
+username = input("Введите логин пользователя: \n")
 
 os.system(f"""
 cd ~
-wget -P ~/ http://cm.nso.ru:8080/cmj-web/plugin2/cmjproxyplugin2_x64.run
+wget -P /home/NSO.LOC/{username}/ http://cm.nso.ru:8080/cmj-web/plugin2/cmjproxyplugin2_x64.run
 chmod +rwx cmjproxyplugin2_x64.run
 ./cmjproxyplugin2_x64.run
 rm -f cmjproxyplugin2_x64.run
 """)
 
 for browser in browsers:
-    path_browser = os.path.expanduser(f'~/.config/{browser}/')
+    path_browser = os.path.expanduser(f'/home/NSO.LOC/{username}/.config/{browser}/')
     os.system(f'cp -r {path_google_chrome} {path_browser}')
 
 for browser in browsers:
-    path_json = os.path.expanduser(f'~/.config/{browser}/Default/Preferences')
+    path_json = os.path.expanduser(f'/home/NSO.LOC/{username}/.config/{browser}/Default/Preferences')
     with open(path_json, 'r') as f:
         string = json.load(f)
 
