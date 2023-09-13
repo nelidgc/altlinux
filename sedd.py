@@ -2,7 +2,7 @@
 
 import json
 import os
-
+ 
 path_google_chrome = os.path.expanduser(r'~/.config/google-chrome/NativeMessagingHosts')
 browsers = ['chromium', 'yandex-browser', 'chromium-gost']
 upd_dict = {'newAllowFileAccess':True, 'incognito':True}
