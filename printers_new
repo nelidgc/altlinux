@@ -1,0 +1,191 @@
+#!/usr/bin/python3
+
+import os
+
+
+class MFU:
+    def __init__(self):
+        
+        self.name = input("Выбор модели из предложенных вариантов:\n1.Brother5750\n2.Brother8690\n3.Xerox\n4.SharpMX2651\nДля выхода из программы нажмите клавишу 'q'\n: ")
+        
+        if self.name == "q":
+            exit('До новых встреч!')
+        self.ip = input("Введите ip-адрес принтера: ")
+        
+    def printers_names(self):
+        printer_names = ['MFCL5750DW', 'MFCL8690CDW', 'XEROX', 'SHARPMX2651']
+        number_choice = int(self.name) - 1
+        name_printer = printer_names[number_choice]
+        try: 
+            open("/etc/cups/printers.conf", 'r')            
+        except FileNotFoundError:
+            os.system("touch /etc/cups/printers.conf")
+            
+
+        with open("/etc/cups/printers.conf", 'r') as p:
+                for line in p:
+                    string = line.rstrip("\n")
+                    if string == f"<Printer {name_printer}>":
+                        while True:
+                            new_name = input("Введите имя принтера: \n")
+                            if new_name.rstrip() == '' or new_name.upper() == name_printer or len(new_name) >= 15:
+                                print(f'Введено пустое(или превышает длину в 15 символов) значение или принтер с именем {name_printer} уже установлен !!!\n')
+                            else:
+                                break
+                        return new_name        
+                    else:
+                        name_printer
+                print("\nИмя принтера принято!\n")
+                return name_printer
+        
+        
+    def commands(self, device):
+        print("\nУстановка драйверов для печати и сканирования\n")
+        self.device = device
+
+        lpadmins = {
+            1 : f'lpadmin -p {device} -E -v socket://{self.ip} -m brother-MFCL5750DW-cups-en.ppd',
+            2 : f'lpadmin -p {device} -E -v socket://{self.ip} -m lsb/usr/Brother/brother_mfcl8690cdw_printer_en.ppd',
+            3 : f'lpadmin -p {device} -E -v ipp://{self.ip}/ipp/print -m everywhere',
+            4 : f'lpadmin -p {device} -E -v socket://{self.ip} -m gutenprint.5.3://pcl-g_c/expert'       
+                    }
+        
+        rpms = {
+            1 : '''
+                apt-repo add "rpm http://alt-mirror.arm.loc drv/x86_64 drv"
+                apt-get update && apt-get install mfcl5750dwlpr mfcl5750dwcupswrapper brscan simple-scan -y
+                ''',
+            2 : '''
+                wget -P /home/master/ https://download.brother.com/welcome/dlf103215/mfcl8690cdwlpr-1.5.0-0.i386.rpm
+                wget -P /home/master/ https://download.brother.com/welcome/dlf103224/mfcl8690cdwcupswrapper-1.5.0-0.i386.rpm
+                rpm -ihv --nodeps /home/master/mfcl8690cdwlpr-1.5.0-0.i386.rpm
+                rpm -ihv --nodeps /home/master/mfcl8690cdwcupswrapper-1.5.0-0.i386.rpm
+                rpm -e --justdb mfcl8690cdwlpr mfcl8690cdwcupswrapper
+                rm -f mfcl8690cdwlpr-1.5.0-0.i386.rpm mfcl8690cdwcupswrapper-1.5.0-0.i386.rpm
+                ''',
+            3 : "",
+            4 : ""    
+                }
+        
+        os.system(f"""
+        {rpms[int(self.name)]}
+        apt-get install simple-scan -y
+        {lpadmins[int(self.name)]}
+        systemctl enable --now avahi-daemon
+        """)
+        print("\nУстановка прошла успешно!\n")
+    
+    def airscan_conf(self, conf):
+        os.system("systemctl restart cups")
+        print('\nПроизводится настройка конфигов\n')
+        self.conf = conf
+        devices = {
+            1 : f"\n{self.conf} = http://{self.ip}/WebServices/ScannerService, WSD",
+            2 : f"\n{self.conf} = http://{self.ip}/WebServices/ScannerService, WSD",
+            3 : f"\n{self.conf} = http://{self.ip}/eSCL, eSCL",
+            4 : f"\n{self.conf} = http://{self.ip}/eSCL, eSCL"       
+                   }
+        options = "[options]\ndiscovery = disable \nprotocol = manual\n[devices]"
+        config = (f"""#altlinux
+# sane-airscan example configuration file
+# The following utility helps to discover scanners for manual
+# addition:
+#
+#   https://github.com/alexpevzner/airscan-discover
+
+# Various options
+# Automatic discovery may be enabled (the default) or disabled:
+#   discovery = enable  ; Enable automatic device discovery
+#   discovery = disable ; Disable both DNS-SD and WS-Discovery
+#
+# Protocol choice (eSCL vs WSD if both are available)
+#   protocol = auto     ; Best protocol is chosen automatically, the default
+#   protocol = manual   ; Manual choice is offered
+#
+# WS-Discovery mode
+#   ws-discovery = fast ; Fast discovery, the default
+#   ws-discovery = full ; Full discovery, slow and accurate
+#   ws-discovery = off  ; Disable WS-Discovery
+#
+# Scanner "model" is a string that most of SANE apps display in a list
+# of devices. It may be more convenient to use scanner network name
+# for this purpose:
+#   model = network     ; use network device name (default)
+#   model = hardware    ; use hardware model name
+#
+# socket_dir gives an optional path to a directory where local (UNIX) sockets
+# can be found.  If an eSCL device's URL is in the form unix://socket/eSCL/,
+# traffic will be sent through socket_dir/socket instead of TCP.  If not
+# specified, sockets will be searched for in /var/run.
+#model = network
+#ws-discovery = fast
+#socket_dir = /var/run
+
+# Configuration of debug facilities
+#   trace = path         ; enables protocol trace and configures output
+#                        ; directory. The directory will be created
+#                        ; automatically. Path may start with tilde (~)
+#                        ; character, which means user home directory
+#
+#   enable = true|false  ; enable or disable console logging
+#   hexdump = true|false ; hex dump all traffic (very verbose!)
+[debug]
+#trace   = ~/airscan/trace
+#enable  = true
+#hexdump = false
+
+# Blacklisting devices
+#   model = pattern     ; Blacklist devices by model name
+#   name  = pattern     ; Blacklist devices by network name
+#   ip    = addr[/mask] ; Blacklist devices by IP addresses
+#
+# Notes
+#   In model and network names glob-style wildcards can be used
+#   (i.e., model = "Xerox*")
+#
+#   Network names come from DNS-SD, WS-Discovery doesn't provide this
+#   information. For filtering by network name to work, Avahi must be
+#   enabled and device must be discoverable via DNS-SD (not necessarily
+#   as a scanner, it's enough if WSD scanner is discoverable as a printer
+#   via DNS-SD).
+#
+#   If netmask is not set, address assumed to be device address,
+#   not address of the entire subnet
+#
+#   Blacklisting only affects automatic discovery, and doesn't
+#   affect manually configured devices
+[blacklist]
+#model = "Xerox*"       ; blacklist by model name
+#name  = "HP*"          ; blacklist by network name
+#ip    = 192.168.0.1    ; blacklist by address
+#ip    = 192.168.0.0/24 ; blacklist the whole subnet
+{options}
+{devices[int(self.name)]}                
+        """)
+       
+        with open('/etc/sane.d/dll.d/hpaio','w') as hpaio:
+            hpaio.write('#hpaio')
+
+        with open('/etc/sane.d/dll.d/hplip','w') as hplip:
+            hplip.write('hplip')
+        a = open('/etc/sane.d/airscan.conf', 'r+') 
+        b = a.read(9)
+        while True:
+            if b == "#altlinux":        
+                a.write(devices[int(self.name)])
+                a.close()
+                print(f'\nДобавлен еще один сканер в настройки!\n')
+                break
+            else:    
+                with open("/etc/sane.d/airscan.conf", 'w') as airscan:
+                    airscan.write(config)
+                    print('\nСканер добавлен в настройки!\n')
+                    break
+
+printer = MFU()
+device = printer.printers_names()
+printer.commands(device)
+printer.airscan_conf(device)
+
+
+
