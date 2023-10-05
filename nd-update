@@ -1,1 +1,21 @@
+import os
 
+file_path = "/var/log/first_step"
+
+if os.path(file_path):
+    print("\nВТОРОЙ ЭТАП\n")
+    second_commands = os.system("""
+apt-get update
+apt-get install https://nextcloud.nso.ru/index.php/s/c9f2_rpms/*.rpm -y
+rm -f /var/log/first_step
+""")
+else:
+    print("\nПЕРВЫЙ ЭТАП\n")
+    first_commands = os.system("""
+apt-get update
+apt-get dist-upgrade
+update-kernel
+apt-get clean
+touch /var/log/first_step
+reboot
+""")
