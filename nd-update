@@ -1,21 +1,26 @@
+#!/usr/bin/python3
+
 import os
 
 file_path = "/var/log/first_step"
 
-if os.path(file_path):
+if os.path.exists(file_path):
     print("\nВТОРОЙ ЭТАП\n")
     second_commands = os.system("""
-apt-get update
-apt-get install https://nextcloud.nso.ru/index.php/s/c9f2_rpms/*.rpm -y
-rm -f /var/log/first_step
+
+wget -P /home/ https://nextcloud.nso.ru/index.php/s/c9f2_rpms/download/rpms.tar
+mkdir /home/rpms/
+tar -C /home/rpms/ -xvf /home/rpms.tar
+rm -f /home/*.tar 
+apt-get install /home/rpms/*.rpm -y
+
 """)
 else:
     print("\nПЕРВЫЙ ЭТАП\n")
     first_commands = os.system("""
 apt-get update
-apt-get dist-upgrade
-update-kernel
+apt-get dist-upgrade -y
+update-kernel -y
 apt-get clean
 touch /var/log/first_step
-reboot
 """)
